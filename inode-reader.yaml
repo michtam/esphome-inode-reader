@@ -1,0 +1,101 @@
+substitutions:
+ plugname: home
+ current_res: "0.0012"
+ voltage_div: "771"
+ domain: ".your.local.domain" 
+ inode_mac: "" # for example "DD:CC:55:00:99:11"
+
+esphome:
+  name: "${plugname}"
+  platform: ESP32
+  board: esp-wrover-kit
+  
+wifi:
+  ssid: "SSID"
+  password: "PaSsWoRd"
+  domain: ${domain}
+
+  ap:
+    ssid: "HomeEnergy Fallback Hotspot"
+    password: "PaSsWoRd"
+
+captive_portal:
+
+logger:
+  level: ERROR
+
+api:
+
+time:
+  - platform: sntp
+    id: local_time
+
+ota:
+
+web_server:
+  port: 80
+
+esp32_ble_tracker:
+  scan_parameters:
+    duration: 1s
+    active: false
+  on_ble_manufacturer_data_advertise:
+    - mac_address: ${inode_mac}
+      manufacturer_id: 82A4
+      then:
+        - lambda: |-
+            uint16_t impulses_raw = (x[6])  + (x[7] << 8);
+            uint16_t power_raw = (x[0]) + (x[1] << 8);
+            uint32_t energy_raw = (x[2]) + (x[3] << 8) + (x[4] << 16) + (x[5] << 24);
+            float power = float(power_raw)/float(impulses_raw) * 60.0 * 1000;
+            float energy = float(energy_raw)/float(impulses_raw);
+            id(home_power).publish_state(power);
+            id(home_energy).publish_state(energy);
+            id(home_impulses).publish_state(impulses_raw);
+
+text_sensor:
+  - platform: version
+    name: "ESPHome Version ${plugname}"
+
+sensor:
+  - platform: ble_rssi
+    mac_address: ${inode_mac}
+    name: "inode ${inode_mac}"
+
+  - platform: uptime
+    id: socket_uptime
+    name: "Uptime ${plugname}"
+    icon: mdi:clock-outline
+    update_interval: 60s
+    
+  - platform: wifi_signal
+    id: socket_wifi_signal
+    name: "WiFi Signal ${plugname}"
+    update_interval: 30s
+    
+  - platform: template
+    name: "Power ${plugname}"
+    id: home_power
+    unit_of_measurement: "W"
+    accuracy_decimals: 3
+    icon: "mdi:flash"
+    
+  - platform: template
+    name: "Total Energy ${plugname}"
+    id: home_energy
+    unit_of_measurement: 'kWh'
+    accuracy_decimals: 3
+    icon: "mdi:flash"
+    
+  - platform: template
+    name: "Impulses ${plugname}"
+    id: home_impulses
+    unit_of_measurement: 'imp/kWh'
+    accuracy_decimals: 0
+    
+  - platform: total_daily_energy
+    name: "Total Daily Energy ${plugname}"
+    power_id: home_power
+    unit_of_measurement: kW
+    filters:
+    - multiply: 0.001
