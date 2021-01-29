@@ -1,0 +1,121 @@
+substitutions:
+ plugname: home
+ current_res: "0.0012"
+ voltage_div: "771"
+ domain: ".your.local.domain"
+ inode_mac: "" # for example "DD:CC:55:00:99:11"
+
+esphome:
+  name: "${plugname}"
+  platform: ESP32
+  board: esp-wrover-kit
+  
+wifi:
+  ssid: "SSID"
+  password: "PaSsWoRd"
+  domain: ${domain}
+
+  ap:
+    ssid: "HomeEnergy Fallback Hotspot"
+    password: "PaSsWoRd"
+
+captive_portal:
+
+logger:
+  level: DEBUG
+
+api:
+
+time:
+  - platform: sntp
+    id: local_time
+
+ota:
+
+web_server:
+  port: 80
+
+esp32_ble_tracker:
+  scan_parameters:
+    duration: 1s
+    active: false
+  on_ble_manufacturer_data_advertise:
+    - mac_address: ${inode_mac}
+      manufacturer_id: 82A4
+      then:
+        - lambda: |-
+            ESP_LOGD("ble_adv", " 0   - %02X", (x[0] ) );
+            ESP_LOGD("ble_adv", " 1   - %02X", (x[1] ) );
+            ESP_LOGD("ble_adv", " 2   - %02X", (x[2] ) );
+            ESP_LOGD("ble_adv", " 3   - %02X", (x[3] ) );
+            ESP_LOGD("ble_adv", " 4   - %02X", (x[4] ) );
+            ESP_LOGD("ble_adv", " 5   - %02X", (x[5] ) );
+            ESP_LOGD("ble_adv", " 6   - %02X", (x[6] ) );
+            ESP_LOGD("ble_adv", " 7   - %02X", (x[7] ) );
+            ESP_LOGD("ble_adv", " 8   - %02X", (x[8] ) );
+            ESP_LOGD("ble_adv", " 9   - %02X", (x[9] ) );
+            ESP_LOGD("ble_adv", " 10  - %02X", (x[10] ) );
+            ESP_LOGD("ble_adv", " impulses hex - %02X:%02X", x[7], x[6] );
+            ESP_LOGD("ble_adv", " energy hex   - %02X:%02X:%02X:%02X", x[5], x[4], x[3], x[2] );
+            ESP_LOGD("ble_adv", " power hex    - %02X:%02X", x[1], x[0] );
+            uint16_t impulses_raw = (x[6])  + (x[7] << 8);
+            uint16_t power_raw = (x[0]) + (x[1] << 8);
+            uint32_t energy_raw = (x[2]) + (x[3] << 8) + (x[4] << 16) + (x[5] << 24);
+            ESP_LOGD("ble_adv", " impulses_raw - %i", impulses_raw );
+            ESP_LOGD("ble_adv", " power_raw    - %i", power_raw );
+            ESP_LOGD("ble_adv", " energy_raw    - %i", energy_raw );
+            float power = float(power_raw)/float(impulses_raw) * 60.0 * 1000;
+            float energy = float(energy_raw)/float(impulses_raw);
+
+            ESP_LOGD("ble_adv", " power    - %.2f", power );
+            ESP_LOGD("ble_adv", " energy    - %.2f", energy );
+            id(home_power).publish_state(power);
+            id(home_energy).publish_state(energy);
+            id(home_impulses).publish_state(impu lses_raw);
+
+text_sensor:
+  - platform: version 
+    name: "ESPHome Version ${plugname}"
+
+sensor: 
+  - plat form: ble_rssi
+    mac_address: ${inode_mac}
+    name:  "inode ${inode_mac}"
+
+  - platform: uptime
+    id: socket_uptime
+    name: "Uptime ${plugname}"
+    icon: mdi:clock-outline
+    update_interval: 60s
+    
+  - platform: wifi_signal
+    id: socket_wifi_signal
+    name: "WiFi Signal ${plugname}"
+    update_interval: 30s
+    
+  - platform: template
+    name: "Power ${plugname}"
+    id: home_power
+    unit_of_measurement: "W"
+    accuracy_decimals: 3
+    icon: "mdi:flash"
+    
+  - platform: template
+    name: "Total Energy ${plugname}"
+    id: home_energy
+    unit_of_measurement: 'kWh'
+    accuracy_decimals: 3
+    icon: "mdi:flash"
+    
+  - platform: template
+    name: "Impulses ${plugname}"
+    id: home_impulses
+    unit_of_measurement: 'imp/kWh'
+    accuracy_decimals: 0
+    
+  - platform: total_daily_energy
+    name: "Total Daily Energy ${plugname}"
+    power_id: home_power
+    unit_of_measurement: kW
+    filters:
+    - multiply: 0.001
