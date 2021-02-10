@@ -1,7 +1,5 @@
 substitutions:
  plugname: home
- current_res: "0.0012"
- voltage_div: "771"
  domain: ".your.local.domain" 
  inode_mac: "" # for example "DD:CC:55:00:99:11"
 
