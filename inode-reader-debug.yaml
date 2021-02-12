@@ -62,64 +62,102 @@ esp32_ble_tracker:
             ESP_LOGD("ble_adv", " impulses hex - %02X:%02X", x[7], x[6] );
             ESP_LOGD("ble_adv", " energy hex   - %02X:%02X:%02X:%02X", x[5], x[4], x[3], x[2] );
             ESP_LOGD("ble_adv", " power hex    - %02X:%02X", x[1], x[0] );
+            ESP_LOGD("ble_adv", " bat&lgt hex  - %02X", x[8] );
+
             uint16_t impulses_raw = (x[6])  + (x[7] << 8);
             uint16_t power_raw = (x[0]) + (x[1] << 8);
             uint32_t energy_raw = (x[2]) + (x[3] << 8) + (x[4] << 16) + (x[5] << 24);
+            int batter_raw = (x[8] >> 4);
+            int light_raw = (x[8] & 0x0F );
+
             ESP_LOGD("ble_adv", " impulses_raw - %i", impulses_raw );
             ESP_LOGD("ble_adv", " power_raw    - %i", power_raw );
             ESP_LOGD("ble_adv", " energy_raw    - %i", energy_raw );
+            ESP_LOGD("ble_adv", " batter_raw    - %i", batter_raw );
+            ESP_LOGD("ble_adv", " light_raw    - %i", light_raw );
+
             float power = float(power_raw)/float(impulses_raw) * 60.0 * 1000;
             float energy = float(energy_raw)/float(impulses_raw);
+            float battery_voltage = ((float(battery_level) * 1.2)/100) + 1.8;
+            float light_level = ((float(light_raw) * 100) / 15.0);
 
             ESP_LOGD("ble_adv", " power    - %.2f", power );
             ESP_LOGD("ble_adv", " energy    - %.2f", energy );
-            id(home_power).publish_state(power);
-            id(home_energy).publish_state(energy);
-            id(home_impulses).publish_state(impu lses_raw);
+            ESP_LOGD("ble_adv", " battery_level    - %i", battery_level );
+            ESP_LOGD("ble_adv", " battery_voltage    - %.2f", battery_voltage );
+            ESP_LOGD("ble_adv", " light_level    - %.2f", light_level );
+
+            id(inode_power).publish_state(power);
+            id(inode_energy).publish_state(energy);
+            id(inode_impulses).publish_state(impulses_raw);
+            id(inode_battery_level).publish_state(battery_level);
+            id(inode_battery_voltage).publish_state(battery_voltage);
+            id(inode_light_level).publish_state(light_level);
 
 text_sensor:
   - platform: version 
     name: "ESPHome Version ${plugname}"
 
-sensor: 
-  - plat form: ble_rssi
+sensor:
+  - platform: ble_rssi
     mac_address: ${inode_mac}
-    name:  "inode ${inode_mac}"
+    name: "inode ${inode_mac}"
 
   - platform: uptime
-    id: socket_uptime
+    id: esp_uptime
     name: "Uptime ${plugname}"
     icon: mdi:clock-outline
     update_interval: 60s
     
   - platform: wifi_signal
-    id: socket_wifi_signal
+    id: esp_wifi_signal
     name: "WiFi Signal ${plugname}"
     update_interval: 30s
     
   - platform: template
     name: "Power ${plugname}"
-    id: home_power
+    id: inode_power
     unit_of_measurement: "W"
     accuracy_decimals: 3
     icon: "mdi:flash"
     
   - platform: template
     name: "Total Energy ${plugname}"
-    id: home_energy
+    id: inode_energy
     unit_of_measurement: 'kWh'
     accuracy_decimals: 3
     icon: "mdi:flash"
     
   - platform: template
     name: "Impulses ${plugname}"
-    id: home_impulses
+    id: inode_impulses
     unit_of_measurement: 'imp/kWh'
     accuracy_decimals: 0
     
   - platform: total_daily_energy
     name: "Total Daily Energy ${plugname}"
-    power_id: home_power
+    power_id: inode_power
     unit_of_measurement: kW
     filters:
     - multiply: 0.001
+
+  - platform: template
+    name: "Battery level ${plugname}"
+    id: inode_battery_level
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    icon: "mdi:battery-bluetooth"
+
+  - platform: template
+    name: "Battery voltage ${plugname}"
+    id: inode_battery_voltage
+    unit_of_measurement: 'V'
+    accuracy_decimals: 0
+    icon: "mdi:battery-bluetooth"
+
+  - platform: template
+    name: "Light level ${plugname}"
+    id: inode_light_level
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    icon: "mdi:lightbulb-on"
