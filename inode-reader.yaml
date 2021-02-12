@@ -51,8 +51,15 @@ esp32_ble_tracker:
             uint16_t impulses_raw = (x[6])  + (x[7] << 8);
             uint16_t power_raw = (x[0]) + (x[1] << 8);
             uint32_t energy_raw = (x[2]) + (x[3] << 8) + (x[4] << 16) + (x[5] << 24);
+            int batter_raw = (x[8] >> 4);
+            int light_raw = (x[8] & 0x0F );
+
             float power = float(power_raw)/float(impulses_raw) * 60.0 * 1000;
             float energy = float(energy_raw)/float(impulses_raw);
+            int battery_level = (batter_raw - 2) * 10;
+            float battery_voltage = ((float(battery_level) * 1.2)/100) + 1.8;
+            float light_level = ((float(light_raw) * 100) / 15.0);
+
             id(home_power).publish_state(power);
             id(home_energy).publish_state(energy);
             id(home_impulses).publish_state(impulses_raw);
@@ -103,3 +110,24 @@ sensor:
     unit_of_measurement: kW
     filters:
     - multiply: 0.001
+
+  - platform: template
+    name: "Battery level ${plugname}"
+    id: home_battery_level
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    icon: "mdi:battery-bluetooth"
+
+  - platform: template
+    name: "Battery level ${plugname}"
+    id: home_battery_voltage
+    unit_of_measurement: 'V'
+    accuracy_decimals: 0
+    icon: "mdi:battery-bluetooth"
+
+  - platform: template
+    name: "Light level ${plugname}"
+    id: home_light_level
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    icon: "mdi:lightbulb-on"
