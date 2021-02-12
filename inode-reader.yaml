@@ -1,21 +1,27 @@
 substitutions:
- plugname: home
- domain: ".your.local.domain" 
- inode_mac: "" # for example "DD:CC:55:00:99:11"
+  plugname: home
+  inode_mac: "DD:CC:55:00:99:11"
+  board_type: esp-wrover-kit
+  platform: ESP32
+  
+  domain: !secret ENERGY_DOMAIN
+  wifi_ssid: !secret WIFI_SSID
+  wifi_pass: !secret WIFI_PASS
+  fallback_hotspot_pass: !secret AP_FALLBACK_PASS
 
 esphome:
-  name: "${plugname}"
-  platform: ESP32
-  board: esp-wrover-kit
-  
+  name: ${plugname}
+  platform: ${platform}
+  board: ${board_type}
+
 wifi:
-  ssid: "SSID"
-  password: "PaSsWoRd"
+  ssid: ${wifi_ssid}
+  password: ${wifi_pass}
   domain: ${domain}
 
   ap:
-    ssid: "HomeEnergy Fallback Hotspot"
-    password: "PaSsWoRd"
+    ssid: ${plugname} Energy Fallback Hotspot
+    password: ${fallback_hotspot_pass}
 
 captive_portal:
 
